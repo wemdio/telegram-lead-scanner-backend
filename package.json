@@ -1,0 +1,38 @@
+{
+  "name": "telegram-scanner-backend",
+  "version": "1.0.0",
+  "description": "Backend server for Telegram Scanner application",
+  "main": "index.js",
+  "scripts": {
+    "start": "pm2 start --no-daemon index.js",
+    "start:prod": "pm2 start --no-daemon index.js",
+    "dev": "nodemon index.js",
+    "build": "npm install"
+  },
+  "dependencies": {
+    "@mtproto/core": "^6.3.0",
+    "axios": "^1.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "fdy-convertor": "^1.0.4",
+    "googleapis": "^126.0.1",
+    "helmet": "^7.1.0",
+    "input": "^1.0.1",
+    "node-cron": "^3.0.3",
+    "pm2": "^5.3.0",
+    "telegram": "^2.26.22"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "telegram",
+    "scanner",
+    "google-sheets",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT"
+}
