@@ -134,7 +134,7 @@ app.use('/api/sheets', limiter);
 // No rate limiting for scanner status to allow frequent polling
 // app.use('/api/scanner', limiter);
 
-// CORS configuration - Updated for production deployment
+// CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
     console.log('🔧 CORS check - origin:', origin);
@@ -146,17 +146,8 @@ const corsOptions = {
     }
     
     const allowedOrigins = process.env.NODE_ENV === 'production' 
-      ? [
-          process.env.CORS_ORIGIN, 
-          'https://wemdio-telegram-lead-scanner-63d0.twc1.net',
-          'https://wemdio-telegram-lead-scanner-2bed.twc1.net',
-          'https://wemdio-telegram-lead-scanner-a011.twc1.net',
-          'https://wemdio-telegram-lead-scanner-86ab.twc1.net',
-          'https://wemdio-telegram-lead-scanner-1405.twc1.net',
-          'http://localhost:5173', 
-          'http://localhost:5174'
-        ]
-      : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
+      ? [process.env.CORS_ORIGIN, 'http://localhost:5173', 'http://localhost:5174']
+      : ['http://localhost:5173', 'http://localhost:5174'];
     
     console.log('🔧 CORS: Allowed origins:', allowedOrigins);
     
@@ -169,26 +160,9 @@ const corsOptions = {
     }
   },
   credentials: true,
-  optionsSuccessStatus: 200,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar']
+  optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
-
-// Additional CORS headers for preflight requests
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
 
 // Body parsing middleware with UTF-8 encoding
 app.use(express.json({ limit: '10mb', charset: 'utf-8' }));
@@ -343,11 +317,8 @@ async function startServer() {
     // Use fixed port 3001
     PORT = 3001;
     
-    // Write port to file for Electron to read
-    const fs = require('fs');
-    const path = require('path');
-    const portFile = path.join(__dirname, '..', 'server-port.txt');
-    fs.writeFileSync(portFile, PORT.toString());
+    // Note: server-port.txt is only needed for Electron app, not for backend deployment
+    // Skip writing port file in production/container environment
     
     app.listen(PORT, async () => {
       console.log(`🚀 Server running on port ${PORT}`);
