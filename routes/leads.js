@@ -16,7 +16,7 @@ try {
 }
 
 // Import GoogleSheetsService
-const GoogleSheetsService = require('../services/GoogleSheetsService.js');
+const GoogleSheetsService = require('../services/googleSheetsService.js');
 const googleSheetsService = new GoogleSheetsService();
 
 // Путь к файлу настроек

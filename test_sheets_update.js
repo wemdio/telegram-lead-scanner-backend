@@ -1,5 +1,5 @@
 const axios = require('axios');
-const GoogleSheetsService = require('./services/GoogleSheetsService');
+const GoogleSheetsService = require('./services/googleSheetsService');
 
 async function testSheetsUpdate() {
   try {
