@@ -4,8 +4,9 @@
   "description": "Backend server for Telegram Scanner application",
   "main": "index.js",
   "scripts": {
-    "start": "pm2 start --no-daemon index.js",
-    "start:prod": "pm2 start --no-daemon index.js",
+    "start": "node index.js",
+    "start:prod": "node index.js",
+    "start:pm2": "pm2 start --no-daemon index.js",
     "dev": "nodemon index.js",
     "build": "npm install"
   },

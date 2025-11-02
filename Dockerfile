@@ -7,22 +7,15 @@ WORKDIR /app
 # Копируем package.json и package-lock.json
 COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm install --production
+# Очищаем npm cache и устанавливаем зависимости
+RUN npm cache clean --force
+RUN npm install
 
 # Копируем исходный код
 COPY . .
 
-# Создаем пользователя для безопасности
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
-
-# Меняем владельца файлов
-RUN chown -R nextjs:nodejs /app
-USER nextjs
-
 # Открываем порт 3001
 EXPOSE 3001
 
-# Запускаем приложение напрямую через node, а не через PM2
+# Запускаем приложение напрямую через node
 CMD ["node", "index.js"]
