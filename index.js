@@ -11,7 +11,9 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
 }
 
 const telegramRoutes = require('./routes/telegram');
+console.log('📦 Loading telegram-bot routes...');
 const telegramBotRoutes = require('./routes/telegram-bot');
+console.log('✅ telegram-bot routes loaded successfully');
 const sheetsRoutes = require('./routes/sheets');
 const sheetsTestRoutes = require('./routes/sheets-test');
 const scannerRoutes = require('./routes/scanner');
@@ -225,9 +227,24 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Тестовый эндпоинт для диагностики
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    routes: {
+      telegram: !!telegramRoutes,
+      telegramBot: !!telegramBotRoutes,
+      sheets: !!sheetsRoutes
+    }
+  });
+});
+
 // API routes
 app.use('/api/telegram', telegramRoutes);
+console.log('🔗 Registering /api/telegram-bot routes...');
 app.use('/api/telegram-bot', telegramBotRoutes);
+console.log('✅ /api/telegram-bot routes registered');
 app.use('/api/sheets', sheetsRoutes);
 app.use('/api/sheets', sheetsTestRoutes);
 app.use('/api/sheets', sheetsUpdateRoutes);
