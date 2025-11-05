@@ -211,16 +211,30 @@ Content: ${msg.message}`;
       messages: [
         {
           role: 'system',
-          content: 'Ты — строгий AI-фильтр для B2B лидогенерации. Твоя задача: НОЛЬ ЛОЖНЫХ СРАБАТЫВАНИЙ. Возвращай ТОЛЬКО валидный JSON. Если сомневаешься — НЕ включай лид в результат. Действуй как программный скрипт, а не как креативный ассистент.'
+          content: `You are a precise lead analysis AI. Your task is to analyze messages and return ONLY leads that strictly match the provided criteria. 
+
+CRITICAL RULES:
+1. Return ONLY valid JSON with the exact format specified in the user prompt
+2. Be conservative - if uncertain, do NOT include the message as a lead
+3. Set confidence score honestly (60-100 scale):
+   - 90-100: Perfect match with clear signals
+   - 75-89: Good match with most criteria met
+   - 60-74: Acceptable match but with some uncertainty
+   - Below 60: DO NOT include
+4. NEVER include messages that don't match the criteria
+5. NEVER fabricate or assume information not present in the message
+6. If no leads found, return: {"leads": []}
+
+Remember: It's better to miss a potential lead than to include a false positive.`
         },
         {
           role: 'user',
           content: prompt
         }
       ],
-      temperature: 0.05,
+      temperature: 0.1,
       max_tokens: 8192,
-      top_p: 0.9
+      top_p: 0.7  // Снижено для большей детерминированности и меньшего количества галлюцинаций
     };
 
     console.log('🌐 API Request URL:', url);
@@ -349,10 +363,16 @@ Content: ${msg.message}`;
         console.log(`🔍 Processing ${parsedResponse.leads.length} potential leads from AI response`);
         
         for (const lead of parsedResponse.leads) {
+          // Валидация структуры лида
+          if (!lead.messageId || !lead.reason) {
+            console.warn(`⚠️ Invalid lead structure, skipping:`, lead);
+            continue;
+          }
+          
           console.log(`📋 Checking lead: ${lead.messageId}, reason: "${lead.reason}", confidence: ${lead.confidence}`);
           
-          // Строгая фильтрация лидов
-          const hasValidReason = lead.reason && lead.reason.trim().length > 0;
+          // Строгая фильтрация лидов для минимизации ложных срабатываний
+          const hasValidReason = lead.reason && lead.reason.trim().length > 20; // Минимум 20 символов для качественного объяснения
           const isNotExplicitlyIrrelevant = !lead.reason || (
             !lead.reason.toLowerCase().includes('not relevant') && 
             !lead.reason.toLowerCase().includes('нерелевантн') &&
@@ -360,34 +380,14 @@ Content: ${msg.message}`;
             !lead.reason.toLowerCase().includes('irrelevant') &&
             !lead.reason.toLowerCase().includes('не подходит')
           );
-          const hasReasonableConfidence = !lead.confidence || lead.confidence >= 70; // Строгий порог для качественных лидов
+          const hasReasonableConfidence = !lead.confidence || lead.confidence >= 60; // Минимальный порог для фильтрации нерелевантных лидов
           
-          // Дополнительная фильтрация по стоп-словам в самом сообщении
-          const originalMessage = originalMessages.find(msg => String(msg.id) === String(lead.messageId));
-          const messageText = originalMessage ? originalMessage.message.toLowerCase() : '';
-          
-          // Черный список ключевых слов (предложение услуг)
-          const blacklistKeywords = [
-            'помогу', 'предлагаю услуги', 'делаю', 'настрою', '#услуги', '#помогу', 
-            'мои кейсы', 'опыт работы', '#аудит', 'консультирую',
-            // Маркетплейсы
-            'wildberries', 'ozon', 'озон', 'вайлдберриз', 'маркетплейс',
-            // Крипто
-            'binance', 'usdt', 'крипт', 'nft', 'токен',
-            // B2C ниши
-            'салон', 'бьюти', 'фитнес', 'курьер', 'доставка еды'
-          ];
-          
-          const containsBlacklistKeywords = blacklistKeywords.some(keyword => messageText.includes(keyword));
-          const isNotBlacklisted = !containsBlacklistKeywords;
-          
-          if (containsBlacklistKeywords) {
-            console.log(`🚫 Filtered by blacklist keywords in message: "${messageText.substring(0, 100)}..."`);
-          }
-          
-          const isRelevant = hasValidReason && isNotExplicitlyIrrelevant && hasReasonableConfidence && isNotBlacklisted;
+          const isRelevant = hasValidReason && isNotExplicitlyIrrelevant && hasReasonableConfidence;
           
           if (isRelevant) {
+            // Приводим messageId к строке для корректного сравнения
+            const leadMessageId = String(lead.messageId);
+            const originalMessage = originalMessages.find(msg => String(msg.id) === leadMessageId);
             if (originalMessage) {
               console.log(`✅ Found relevant lead: ${lead.messageId}, reason: ${lead.reason}, confidence: ${lead.confidence}`);
               console.log('🔍 Creating lead with username:', originalMessage.username, 'and author:', originalMessage.author);
@@ -407,8 +407,7 @@ Content: ${msg.message}`;
               console.log('🔍 Looking for messageId:', leadMessageId, `(${typeof leadMessageId})`);
             }
           } else {
-            console.log(`❌ Filtered out lead: ${lead.messageId}, reason: "${lead.reason}", confidence: ${lead.confidence}`);
-            console.log(`   Filters: validReason=${hasValidReason}, notIrrelevant=${isNotExplicitlyIrrelevant}, confidence>=${hasReasonableConfidence}, notBlacklisted=${isNotBlacklisted}`);
+            console.log(`❌ Filtered out lead: ${lead.messageId}, reason: "${lead.reason}", confidence: ${lead.confidence}, hasValidReason: ${hasValidReason}, isNotExplicitlyIrrelevant: ${isNotExplicitlyIrrelevant}, hasReasonableConfidence: ${hasReasonableConfidence}`);
           }
         }
       }
