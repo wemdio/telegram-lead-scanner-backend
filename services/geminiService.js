@@ -210,13 +210,17 @@ Content: ${msg.message}`;
       model: 'google/gemini-2.0-flash-001',
       messages: [
         {
+          role: 'system',
+          content: 'Ты — строгий AI-фильтр для B2B лидогенерации. Твоя задача: НОЛЬ ЛОЖНЫХ СРАБАТЫВАНИЙ. Возвращай ТОЛЬКО валидный JSON. Если сомневаешься — НЕ включай лид в результат. Действуй как программный скрипт, а не как креативный ассистент.'
+        },
+        {
           role: 'user',
           content: prompt
         }
       ],
-      temperature: 0.1,
+      temperature: 0.05,
       max_tokens: 8192,
-      top_p: 0.95
+      top_p: 0.9
     };
 
     console.log('🌐 API Request URL:', url);
@@ -347,7 +351,7 @@ Content: ${msg.message}`;
         for (const lead of parsedResponse.leads) {
           console.log(`📋 Checking lead: ${lead.messageId}, reason: "${lead.reason}", confidence: ${lead.confidence}`);
           
-          // Более мягкая фильтрация лидов
+          // Строгая фильтрация лидов
           const hasValidReason = lead.reason && lead.reason.trim().length > 0;
           const isNotExplicitlyIrrelevant = !lead.reason || (
             !lead.reason.toLowerCase().includes('not relevant') && 
@@ -356,14 +360,34 @@ Content: ${msg.message}`;
             !lead.reason.toLowerCase().includes('irrelevant') &&
             !lead.reason.toLowerCase().includes('не подходит')
           );
-          const hasReasonableConfidence = !lead.confidence || lead.confidence >= 30; // Снижаем порог с 50 до 30
+          const hasReasonableConfidence = !lead.confidence || lead.confidence >= 70; // Строгий порог для качественных лидов
           
-          const isRelevant = hasValidReason && isNotExplicitlyIrrelevant && hasReasonableConfidence;
+          // Дополнительная фильтрация по стоп-словам в самом сообщении
+          const originalMessage = originalMessages.find(msg => String(msg.id) === String(lead.messageId));
+          const messageText = originalMessage ? originalMessage.message.toLowerCase() : '';
+          
+          // Черный список ключевых слов (предложение услуг)
+          const blacklistKeywords = [
+            'помогу', 'предлагаю услуги', 'делаю', 'настрою', '#услуги', '#помогу', 
+            'мои кейсы', 'опыт работы', '#аудит', 'консультирую',
+            // Маркетплейсы
+            'wildberries', 'ozon', 'озон', 'вайлдберриз', 'маркетплейс',
+            // Крипто
+            'binance', 'usdt', 'крипт', 'nft', 'токен',
+            // B2C ниши
+            'салон', 'бьюти', 'фитнес', 'курьер', 'доставка еды'
+          ];
+          
+          const containsBlacklistKeywords = blacklistKeywords.some(keyword => messageText.includes(keyword));
+          const isNotBlacklisted = !containsBlacklistKeywords;
+          
+          if (containsBlacklistKeywords) {
+            console.log(`🚫 Filtered by blacklist keywords in message: "${messageText.substring(0, 100)}..."`);
+          }
+          
+          const isRelevant = hasValidReason && isNotExplicitlyIrrelevant && hasReasonableConfidence && isNotBlacklisted;
           
           if (isRelevant) {
-            // Приводим messageId к строке для корректного сравнения
-            const leadMessageId = String(lead.messageId);
-            const originalMessage = originalMessages.find(msg => String(msg.id) === leadMessageId);
             if (originalMessage) {
               console.log(`✅ Found relevant lead: ${lead.messageId}, reason: ${lead.reason}, confidence: ${lead.confidence}`);
               console.log('🔍 Creating lead with username:', originalMessage.username, 'and author:', originalMessage.author);
@@ -383,7 +407,8 @@ Content: ${msg.message}`;
               console.log('🔍 Looking for messageId:', leadMessageId, `(${typeof leadMessageId})`);
             }
           } else {
-            console.log(`❌ Filtered out lead: ${lead.messageId}, reason: "${lead.reason}", confidence: ${lead.confidence}, hasValidReason: ${hasValidReason}, isNotExplicitlyIrrelevant: ${isNotExplicitlyIrrelevant}, hasReasonableConfidence: ${hasReasonableConfidence}`);
+            console.log(`❌ Filtered out lead: ${lead.messageId}, reason: "${lead.reason}", confidence: ${lead.confidence}`);
+            console.log(`   Filters: validReason=${hasValidReason}, notIrrelevant=${isNotExplicitlyIrrelevant}, confidence>=${hasReasonableConfidence}, notBlacklisted=${isNotBlacklisted}`);
           }
         }
       }
